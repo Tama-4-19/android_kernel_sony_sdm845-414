@@ -23,6 +23,13 @@
 
 static struct rpmh_client *rpmh_client;
 
+#if defined(CONFIG_ARM_GIC_V3) && defined(CONFIG_ARCH_SDM845)
+#include <linux/irqchip/arm-gic-v3.h>
+#else
+static inline void gic_v3_dist_restore(void) {}
+static inline void gic_v3_dist_save(void) {}
+#endif
+
 static int setup_wakeup(uint32_t lo, uint32_t hi)
 {
 	struct tcs_cmd cmd[2] = { { 0 } };
@@ -60,6 +67,7 @@ static bool system_sleep_allowed(void)
  */
 static int system_sleep_enter(struct cpumask *mask)
 {
+        gic_v3_dist_save();
 	return rpmh_flush(rpmh_client);
 }
 
@@ -70,6 +78,7 @@ static void system_sleep_exit(bool success)
 {
 	if (success)
 		msm_rpmh_master_stats_update();
+	gic_v3_dist_restore();
 }
 
 static struct system_pm_ops pm_ops = {
